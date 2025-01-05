@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func (m *Model) handleEnter() {
@@ -21,6 +23,20 @@ func (m *Model) handleEnter() {
 		case "certificates":
 			m.lastMainCursor = m.Cursor
 			m.Message = m.handleCertificates()
+		case "volumes":
+			volumes, err := m.volumeCtl.ListVolumes()
+			if err != nil {
+				m.Message = fmt.Sprintf("Error listing volumes: %v", err)
+				return
+			}
+			m.volumes = volumes
+			var choices []string
+			for _, v := range volumes {
+				choices = append(choices, fmt.Sprintf("%s/%s (%s)", v.Namespace, v.Name, v.Size))
+			}
+			m.SubChoices = choices
+			m.State = VolumeResizeMenu
+			m.Cursor = 0
 		}
 		return
 	}
@@ -72,6 +88,14 @@ func (m *Model) handleEnter() {
 		case "option2":
 			m.Message = m.handleOption2()
 		}
+	}
+
+	if m.State == VolumeResizeMenu {
+		if len(m.volumes) > 0 {
+			m.selectedVolume = &m.volumes[m.Cursor]
+			m.Message = "Enter new size (e.g., 10Gi):"
+		}
+		return
 	}
 }
 
@@ -227,4 +251,82 @@ func (m *Model) handleCertificateRenewal() string {
 	return fmt.Sprintf("Successfully renewed certificate %s/%s",
 		m.selectedCert.Namespace,
 		m.selectedCert.Name)
+}
+
+func (m *Model) handleVolumeMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "ctrl+c":
+			if m.State == VolumeSizeInput {
+				m.State = MainMenu
+				m.Message = "Volume resize operation cancelled"
+				return m, nil
+			}
+			return m, tea.Quit
+		case "backspace":
+			if m.State == VolumeResizeMenu || m.State == VolumeSizeInput {
+				m.State = MainMenu
+				m.Cursor = m.lastMainCursor
+				m.Message = ""
+				return m, nil
+			}
+		case "up", "k":
+			if m.State == VolumeResizeMenu {
+				if m.Cursor > 0 {
+					m.Cursor--
+				}
+			}
+		case "down", "j":
+			if m.State == VolumeResizeMenu {
+				if m.Cursor < len(m.SubChoices)-1 {
+					m.Cursor++
+				}
+			}
+		case "enter":
+			if m.State == VolumeResizeMenu {
+				m.selectedVolume = &m.volumes[m.Cursor]
+				m.Message = "Enter new size (e.g., 10Gi) or press 'q' to cancel:"
+				m.State = VolumeSizeInput
+				m.newVolumeSize = ""
+				return m, nil
+			} else if m.State == VolumeSizeInput {
+				// Handle the resize operation
+				if m.newVolumeSize != "" && m.selectedVolume != nil {
+					err := m.volumeCtl.ResizeVolume(m.selectedVolume.Namespace, m.selectedVolume.Name, m.newVolumeSize)
+					if err != nil {
+						m.Message = fmt.Sprintf("Failed to resize volume:\n%v", err)
+					} else {
+						m.Message = fmt.Sprintf("Successfully resized volume %s/%s to %s",
+							m.selectedVolume.Namespace, m.selectedVolume.Name, m.newVolumeSize)
+					}
+					m.State = MainMenu
+				}
+				return m, nil
+			}
+		case "esc":
+			if m.State == VolumeResizeMenu || m.State == VolumeSizeInput {
+				m.State = MainMenu
+				m.Cursor = m.lastMainCursor
+				m.Message = ""
+				return m, nil
+			}
+		default:
+			if m.State == VolumeSizeInput {
+				switch msg.String() {
+				case "backspace":
+					if len(m.newVolumeSize) > 0 {
+						m.newVolumeSize = m.newVolumeSize[:len(m.newVolumeSize)-1]
+					}
+				default:
+					if len(msg.String()) == 1 {
+						m.newVolumeSize += msg.String()
+					}
+				}
+				m.Message = fmt.Sprintf("Enter new size (e.g., 10Gi) or press 'q' to cancel: %s", m.newVolumeSize)
+				return m, nil
+			}
+		}
+	}
+	return m, nil
 }

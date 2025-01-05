@@ -9,6 +9,9 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.State == VolumeResizeMenu || m.State == VolumeSizeInput {
+			return m.handleVolumeMenu(msg)
+		}
 		return m.handleKeyPress(msg)
 	}
 	return m, nil

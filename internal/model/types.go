@@ -1,8 +1,9 @@
 package model
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
 	"kubegreen/internal/controller"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type MenuState int
@@ -11,6 +12,8 @@ const (
 	MainMenu MenuState = iota
 	ListSubMenu
 	RenewalConfirm
+	VolumeResizeMenu
+	VolumeSizeInput
 )
 
 type Model struct {
@@ -30,6 +33,12 @@ type Model struct {
 
 	selectedCert *controller.CertInfo
 	certificates []controller.CertInfo
+
+	// Volume-related fields
+	volumeCtl      *controller.VolumeController
+	volumes        []controller.VolumeInfo
+	selectedVolume *controller.VolumeInfo
+	newVolumeSize  string
 }
 
 func NewModel() tea.Model {
@@ -42,11 +51,13 @@ func NewModel() tea.Model {
 	}
 
 	certCtl := controller.NewCertController(ctlr.GetClientset())
+	volumeCtl := controller.NewVolumeController(ctlr.GetClientset(), ctlr.GetConfig())
 
 	return &Model{
-		Choices:    []string{"list", "contexts", "pod", "certificates"},
+		Choices:    []string{"list", "contexts", "pod", "certificates", "volumes"},
 		State:      MainMenu,
 		contextCtl: ctlr,
 		certCtl:    certCtl,
+		volumeCtl:  volumeCtl,
 	}
 }

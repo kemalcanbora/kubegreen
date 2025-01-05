@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -9,14 +10,36 @@ func (m *Model) View() string {
 
 	switch m.State {
 	case MainMenu:
-		b.WriteString("Choose an option:\n\n")
-		b.WriteString(renderChoices(m.Choices, m.Cursor, false))
+		b.WriteString("What would you like to do?\n\n")
+
+		for i, choice := range m.Choices {
+			cursor := " "
+			if m.Cursor == i {
+				cursor = ">"
+			}
+			b.WriteString(fmt.Sprintf("%s %s\n", cursor, choice))
+		}
+
 	case ListSubMenu:
 		if m.Choices[m.lastMainCursor] == "pod" {
 			b.WriteString(renderChoices(m.SubChoices, m.Cursor, true))
 		} else {
 			b.WriteString("List sub-options:\n\n")
 			b.WriteString(renderChoices(m.SubChoices, m.Cursor, false))
+		}
+
+	case RenewalConfirm:
+		b.WriteString("Renewal Confirm\n\n")
+
+	case VolumeResizeMenu:
+		b.WriteString("Select a volume to resize:\n\n")
+
+		for i, choice := range m.SubChoices {
+			cursor := " "
+			if m.Cursor == i {
+				cursor = ">"
+			}
+			b.WriteString(fmt.Sprintf("%s %s\n", cursor, choice))
 		}
 	}
 

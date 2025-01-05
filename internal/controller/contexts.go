@@ -1,19 +1,31 @@
 package controller
 
 import (
+	"os"
+	"path/filepath"
+
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type ContextController struct {
-	configAccess clientcmd.ConfigAccess
-	clientset    *kubernetes.Clientset
+	clientset *kubernetes.Clientset
+	config    *rest.Config
+}
+
+func (c *ContextController) GetConfig() *rest.Config {
+	return c.config
 }
 
 func NewContextController() (*ContextController, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename())
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, err
+		kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -22,8 +34,8 @@ func NewContextController() (*ContextController, error) {
 	}
 
 	return &ContextController{
-		configAccess: clientcmd.NewDefaultClientConfigLoadingRules(),
-		clientset:    clientset,
+		clientset: clientset,
+		config:    config,
 	}, nil
 }
 
