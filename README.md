@@ -4,7 +4,7 @@ KubeGreen is a terminal-based Kubernetes management tool that provides an intera
 
 ## Demo
 
-![KubeGreen Demo](docs/images/demo.gif)
+![KubeGreen Demo](docs/images/kubegreen.gif)
 
 ## Features
 
