@@ -32,7 +32,7 @@ func (m *Model) View() string {
 		b.WriteString("Renewal Confirm\n\n")
 
 	case VolumeResizeMenu:
-		b.WriteString("Select a volume to resize:\n\n")
+		b.WriteString("Select a volume to delete:\n\n")
 
 		for i, choice := range m.SubChoices {
 			cursor := " "

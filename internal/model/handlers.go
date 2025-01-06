@@ -258,14 +258,9 @@ func (m *Model) handleVolumeMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			if m.State == VolumeSizeInput {
-				m.State = MainMenu
-				m.Message = "Volume resize operation cancelled"
-				return m, nil
-			}
 			return m, tea.Quit
 		case "backspace":
-			if m.State == VolumeResizeMenu || m.State == VolumeSizeInput {
+			if m.State == VolumeResizeMenu {
 				m.State = MainMenu
 				m.Cursor = m.lastMainCursor
 				m.Message = ""
@@ -285,23 +280,42 @@ func (m *Model) handleVolumeMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if m.State == VolumeResizeMenu {
-				m.selectedVolume = &m.volumes[m.Cursor]
-				m.Message = "Enter new size (e.g., 10Gi) or press 'q' to cancel:"
-				m.State = VolumeSizeInput
-				m.newVolumeSize = ""
+				if len(m.volumes) > 0 {
+					m.selectedVolume = &m.volumes[m.Cursor]
+					m.Message = fmt.Sprintf("Are you sure you want to delete volume %s/%s? (y/n)",
+						m.selectedVolume.Namespace, m.selectedVolume.Name)
+					m.State = VolumeSizeInput
+				}
 				return m, nil
 			} else if m.State == VolumeSizeInput {
-				// Handle the resize operation
-				if m.newVolumeSize != "" && m.selectedVolume != nil {
-					err := m.volumeCtl.ResizeVolume(m.selectedVolume.Namespace, m.selectedVolume.Name, m.newVolumeSize)
+				if m.selectedVolume != nil {
+					err := m.volumeCtl.DeleteVolume(m.selectedVolume.Namespace, m.selectedVolume.Name)
 					if err != nil {
-						m.Message = fmt.Sprintf("Failed to resize volume:\n%v", err)
+						m.Message = fmt.Sprintf("Failed to delete volume:\n%v", err)
 					} else {
-						m.Message = fmt.Sprintf("Successfully resized volume %s/%s to %s",
-							m.selectedVolume.Namespace, m.selectedVolume.Name, m.newVolumeSize)
+						m.Message = fmt.Sprintf("Successfully deleted volume %s/%s",
+							m.selectedVolume.Namespace, m.selectedVolume.Name)
 					}
 					m.State = MainMenu
 				}
+				return m, nil
+			}
+		case "y", "Y":
+			if m.State == VolumeSizeInput && m.selectedVolume != nil {
+				err := m.volumeCtl.DeleteVolume(m.selectedVolume.Namespace, m.selectedVolume.Name)
+				if err != nil {
+					m.Message = fmt.Sprintf("Failed to delete volume:\n%v", err)
+				} else {
+					m.Message = fmt.Sprintf("Successfully deleted volume %s/%s",
+						m.selectedVolume.Namespace, m.selectedVolume.Name)
+				}
+				m.State = MainMenu
+				return m, nil
+			}
+		case "n", "N":
+			if m.State == VolumeSizeInput {
+				m.Message = "Volume deletion cancelled"
+				m.State = MainMenu
 				return m, nil
 			}
 		case "esc":
@@ -309,21 +323,6 @@ func (m *Model) handleVolumeMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.State = MainMenu
 				m.Cursor = m.lastMainCursor
 				m.Message = ""
-				return m, nil
-			}
-		default:
-			if m.State == VolumeSizeInput {
-				switch msg.String() {
-				case "backspace":
-					if len(m.newVolumeSize) > 0 {
-						m.newVolumeSize = m.newVolumeSize[:len(m.newVolumeSize)-1]
-					}
-				default:
-					if len(msg.String()) == 1 {
-						m.newVolumeSize += msg.String()
-					}
-				}
-				m.Message = fmt.Sprintf("Enter new size (e.g., 10Gi) or press 'q' to cancel: %s", m.newVolumeSize)
 				return m, nil
 			}
 		}
