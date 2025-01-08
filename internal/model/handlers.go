@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,6 +39,13 @@ func (m *Model) handleEnter() {
 			m.SubChoices = choices
 			m.State = VolumeResizeMenu
 			m.Cursor = 0
+		case "metrics":
+			m.lastMainCursor = m.Cursor
+			m.State = MetricsView
+			fmt.Println("Starting metrics collection (Press Ctrl+C to stop)...")
+			fmt.Println("Collecting metrics every 2 seconds...")
+			m.Message = m.handleMetrics()
+			return
 		}
 		return
 	}
@@ -328,4 +337,24 @@ func (m *Model) handleVolumeMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) handleMetrics() string {
+	metrics, err := m.metricsCtl.GetFormattedMetrics(context.Background())
+	if err != nil {
+		return fmt.Sprintf("Error getting metrics: %v", err)
+	}
+	m.metrics = metrics
+
+	// Convert to JSON in a single line
+	jsonData, err := json.Marshal(metrics)
+	if err != nil {
+		return fmt.Sprintf("Error formatting metrics: %v", err)
+	}
+
+	// Just append the new log line
+	if m.Message == "" {
+		return string(jsonData)
+	}
+	return m.Message + "\n" + string(jsonData)
 }

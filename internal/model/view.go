@@ -8,6 +8,12 @@ import (
 func (m *Model) View() string {
 	var b strings.Builder
 
+	if m.State == MetricsView {
+		b.WriteString(m.Message)
+		b.WriteString("\n\n(↑/↓ or j/k to move, enter to select, q to quit)\n")
+		return b.String()
+	}
+
 	switch m.State {
 	case MainMenu:
 		b.WriteString("What would you like to do?\n\n")

@@ -14,6 +14,7 @@ const (
 	RenewalConfirm
 	VolumeResizeMenu
 	VolumeSizeInput
+	MetricsView
 )
 
 type Model struct {
@@ -39,6 +40,10 @@ type Model struct {
 	volumes        []controller.VolumeInfo
 	selectedVolume *controller.VolumeInfo
 	newVolumeSize  string
+
+	// Metrics-related fields
+	metricsCtl *controller.MetricsController
+	metrics    *controller.MetricsOutput
 }
 
 func NewModel() tea.Model {
@@ -52,12 +57,14 @@ func NewModel() tea.Model {
 
 	certCtl := controller.NewCertController(ctlr.GetClientset())
 	volumeCtl := controller.NewVolumeController(ctlr.GetClientset(), ctlr.GetConfig())
+	metricsCtl := controller.NewMetricsController(ctlr.GetClientset(), ctlr.GetMetricsClientset())
 
 	return &Model{
-		Choices:    []string{"list", "contexts", "pod", "certificates", "volumes"},
+		Choices:    []string{"list", "contexts", "pod", "certificates", "volumes", "metrics"},
 		State:      MainMenu,
 		contextCtl: ctlr,
 		certCtl:    certCtl,
 		volumeCtl:  volumeCtl,
+		metricsCtl: metricsCtl,
 	}
 }

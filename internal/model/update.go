@@ -1,8 +1,17 @@
 package model
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	time "time"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 func (m *Model) Init() tea.Cmd {
+	if m.State == MetricsView {
+		return tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+			return t
+		})
+	}
 	return nil
 }
 
@@ -12,7 +21,26 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.State == VolumeResizeMenu || m.State == VolumeSizeInput {
 			return m.handleVolumeMenu(msg)
 		}
+		if m.State == MetricsView {
+			switch msg.String() {
+			case "q", "ctrl+c", "esc", "backspace":
+				m.State = MainMenu
+				m.Cursor = m.lastMainCursor
+				m.Message = ""
+				return m, nil
+			}
+			return m, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+				return t
+			})
+		}
 		return m.handleKeyPress(msg)
+	case time.Time:
+		if m.State == MetricsView {
+			m.Message = m.handleMetrics()
+			return m, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+				return t
+			})
+		}
 	}
 	return m, nil
 }
